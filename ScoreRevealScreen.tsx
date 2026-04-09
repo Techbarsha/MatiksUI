@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import {
   Dimensions,
+  Image,
   Pressable,
   SafeAreaView,
   StyleSheet,
@@ -32,12 +33,14 @@ import Animated, {
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
+import Svg, { Circle as SvgCircle, Path } from 'react-native-svg';
 
 const { width, height } = Dimensions.get('window');
 
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
+// --- ANIMATION & LAYOUT CONSTANTS ---
 const FINAL_SCORE = 2840;
 const SCORE_TIMING_DURATION = 1650;
 const CONFETTI_DURATION = 1200;
@@ -52,6 +55,7 @@ const CONFETTI_ORIGIN_X = width / 2;
 const CONFETTI_ORIGIN_Y = Math.max(120, height * 0.27);
 const AMBIENT_ROTATION = -18 * (Math.PI / 180);
 
+// --- TYPE DEFINITIONS ---
 type ConfettiParticleConfig = {
   color: string;
   gravity: number;
@@ -71,6 +75,7 @@ type ConfettiParticleProps = {
 
 type AnimatedScalar = number;
 
+// --- CONFETTI PARTICLE CONFIGURATION ---
 const CONFETTI_COLORS = [
   '#FF5F6D',
   '#FFC400',
@@ -80,11 +85,16 @@ const CONFETTI_COLORS = [
   '#FFFFFF',
 ];
 
+// A seeded pseudo-random number generator to create a consistent set of particles.
 const seeded = (index: number, offset: number) => {
   const value = Math.sin(index * 97.13 + offset * 31.7) * 43758.5453;
   return value - Math.floor(value);
 };
 
+/**
+ * An array of pre-calculated confetti particle configurations.
+ * This avoids recalculating these values on every render.
+ */
 const CONFETTI_PARTICLES: ConfettiParticleConfig[] = Array.from(
   { length: 28 },
   (_, index) => {
@@ -104,11 +114,23 @@ const CONFETTI_PARTICLES: ConfettiParticleConfig[] = Array.from(
   },
 );
 
+// --- ASSETS & LAYOUT ---
+const SCOREBOARD_ART = require('./assets/scoreboard.png');
+const IS_WIDE_LAYOUT = width >= 760;
+const CONTENT_WIDTH = Math.min(width - 48, 420);
+
+/**
+ * A single confetti particle component.
+ * Its animation is driven by shared values for performance.
+ */
 const ConfettiParticle = ({
   config,
   opacityProgress,
   progress,
 }: ConfettiParticleProps) => {
+  // --- DERIVED VALUES FOR PARTICLE ANIMATION ---
+  // These values are calculated on the UI thread for smooth animation.
+
   const translateX = useDerivedValue(
     () => CONFETTI_ORIGIN_X + config.vx * progress.value,
     [config.vx, progress],
@@ -153,7 +175,41 @@ const ConfettiParticle = ({
   );
 };
 
+/**
+ * A simple SVG logo component for the top of the screen.
+ */
+const MatiksLogo = () => {
+  return (
+    <View style={styles.logoWrap}>
+      <Svg width={82} height={82} viewBox="0 0 82 82" fill="none">
+        <SvgCircle
+          cx={24}
+          cy={41}
+          r={18}
+          stroke="#B7FF5A"
+          strokeWidth={10}
+        />
+        <SvgCircle
+          cx={58}
+          cy={41}
+          r={18}
+          stroke="#B7FF5A"
+          strokeWidth={10}
+        />
+        <Path
+          d="M41 12L31 70"
+          stroke="#B7FF5A"
+          strokeWidth={10}
+          strokeLinecap="round"
+        />
+      </Svg>
+    </View>
+  );
+};
+
 const ScoreRevealScreen = () => {
+  // --- REANIMATED SHARED VALUES ---
+  // These values drive all the animations on the screen.
   const scoreValue = useSharedValue(0);
   const comboScale = useSharedValue(0);
   const comboOpacity = useSharedValue(0);
@@ -168,6 +224,7 @@ const ScoreRevealScreen = () => {
   const ambientPulse = useSharedValue(0);
 
   useEffect(() => {
+    // --- MAIN ANIMATION SEQUENCE ---
     // Score overshoots slightly, then settles for a premium reveal.
     scoreValue.value = withSequence(
       withTiming(FINAL_SCORE * 1.035, {
@@ -206,6 +263,8 @@ const ScoreRevealScreen = () => {
             }),
           );
 
+          // --- COMBO BADGE ANIMATION ---
+          // Pop in with a bounce effect.
           comboScale.value = withSequence(
             withTiming(1.15, {
               duration: 260,
@@ -223,6 +282,8 @@ const ScoreRevealScreen = () => {
             easing: Easing.out(Easing.quad),
           });
 
+          // --- FLAME ICON PULSE ---
+          // Loop the flame icon's scale and opacity for a pulsing effect.
           flamePulse.value = withRepeat(
             withSequence(
               withTiming(1.2, {
@@ -253,6 +314,8 @@ const ScoreRevealScreen = () => {
             false,
           );
 
+          // --- RANK REVEAL ANIMATION ---
+          // Slide up and fade in after a short delay.
           rankTranslateY.value = withSequence(
             withTiming(50, {
               duration: RANK_DELAY,
@@ -278,6 +341,8 @@ const ScoreRevealScreen = () => {
       ),
     );
 
+    // --- SHARE BUTTON SHIMMER ---
+    // A looping shimmer effect that moves across the button.
     shimmerTranslateX.value = withRepeat(
       withSequence(
         withTiming(SHIMMER_END, {
@@ -293,6 +358,8 @@ const ScoreRevealScreen = () => {
       false,
     );
 
+    // --- AMBIENT GLOW PULSE ---
+    // A subtle, slow pulse for the background glow elements.
     ambientPulse.value = withRepeat(
       withSequence(
         withTiming(1, {
@@ -321,6 +388,7 @@ const ScoreRevealScreen = () => {
     shimmerTranslateX,
   ]);
 
+  // --- DERIVED VALUES & ANIMATED STYLES ---
   const animatedScoreText = useDerivedValue(() => {
     const clamped = interpolate(
       scoreValue.value,
@@ -328,7 +396,7 @@ const ScoreRevealScreen = () => {
       [0, FINAL_SCORE * 1.035],
       Extrapolation.CLAMP,
     );
-
+    // Round the value to get an integer ticking effect.
     return `${Math.round(clamped)}`;
   });
 
@@ -339,6 +407,7 @@ const ScoreRevealScreen = () => {
       }) as never,
   );
 
+  // The glow behind the score text scales with the score animation.
   const scoreGlowStyle = useAnimatedStyle(() => {
     const scale = interpolate(
       scoreValue.value,
@@ -371,6 +440,7 @@ const ScoreRevealScreen = () => {
     transform: [{ scale: ctaScale.value }],
   }));
 
+  // Derived values for the background ambient glow animations.
   const glowOpacity = useDerivedValue(
     () => 0.24 + ambientPulse.value * 0.18,
     [ambientPulse],
@@ -384,6 +454,7 @@ const ScoreRevealScreen = () => {
     [ambientPulse],
   );
 
+  // --- EVENT HANDLERS ---
   const handleSharePress = () => {
     ctaScale.value = withSequence(
       withTiming(0.95, {
@@ -406,6 +477,9 @@ const ScoreRevealScreen = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
+        <MatiksLogo />
+        {/* --- BACKGROUND LAYER --- */}
+
         <View pointerEvents="none" style={styles.backgroundLayer}>
           <Canvas style={styles.backgroundCanvas}>
             <Rect x={0} y={0} width={width} height={height}>
@@ -417,6 +491,7 @@ const ScoreRevealScreen = () => {
               />
             </Rect>
 
+            {/* Ambient glow fields */}
             <Circle
               cx={width * 0.84}
               cy={height * 0.18}
@@ -447,6 +522,7 @@ const ScoreRevealScreen = () => {
               <BlurMask blur={72} style="solid" />
             </Circle>
 
+            {/* Animated light bands */}
             <Group
               transform={[
                 { translateX: bandOffset as unknown as AnimatedScalar },
@@ -493,6 +569,7 @@ const ScoreRevealScreen = () => {
           </Canvas>
         </View>
 
+        {/* --- CONFETTI LAYER --- */}
         <View pointerEvents="none" style={styles.confettiLayer}>
           <Canvas style={styles.confettiCanvas}>
             {CONFETTI_PARTICLES.map((particle, index) => (
@@ -506,73 +583,98 @@ const ScoreRevealScreen = () => {
           </Canvas>
         </View>
 
-        <View style={styles.headerBlock}>
-          <Text style={styles.kicker}>MATCH COMPLETE</Text>
-          <Text style={styles.title}>Post Game Score</Text>
-        </View>
+        {/* --- UI CONTENT --- */}
+        <View style={styles.heroRow}>
+          <View style={styles.contentColumn}>
+            <View style={styles.headerBlock}>
+              <Text style={styles.kicker}>MATCH COMPLETE</Text>
+              <Text style={styles.title}>POST GAME</Text>
+              <Text style={styles.title}>SCORE</Text>
+              <Text style={styles.titleAccent}>REVEAL</Text>
+              <Text style={styles.subtitle}>
+                Fast mental duels. Sharp finishes. Share the win.
+              </Text>
+            </View>
 
-        <Animated.View style={[styles.scoreShell, scoreGlowStyle]}>
-          <Text style={styles.scoreLabel}>Your Score</Text>
-          <AnimatedTextInput
-            editable={false}
-            underlineColorAndroid="transparent"
-            caretHidden
-            value={undefined}
-            defaultValue="0"
-            animatedProps={scoreAnimatedProps}
-            style={styles.scoreValue}
-          />
-          <View style={styles.scoreUnderline} />
-        </Animated.View>
+            {/* Animated Score */}
+            <Animated.View style={[styles.scoreShell, scoreGlowStyle]}>
+              <Text style={styles.scoreLabel}>Your Score</Text>
+              <AnimatedTextInput
+                editable={false}
+                underlineColorAndroid="transparent"
+                caretHidden
+                value={undefined}
+                defaultValue="0"
+                animatedProps={scoreAnimatedProps}
+                style={styles.scoreValue}
+              />
+              <View style={styles.scoreUnderline} />
+            </Animated.View>
 
-        <Animated.View style={[styles.comboBadge, comboAnimatedStyle]}>
-          <Animated.Text style={[styles.comboEmoji, flameAnimatedStyle]}>
-            {'\uD83D\uDD25'}
-          </Animated.Text>
-          <Text style={styles.comboText}>7 Combo Streak!</Text>
-        </Animated.View>
+            {/* Animated Combo Badge */}
+            <Animated.View style={[styles.comboBadge, comboAnimatedStyle]}>
+              <Animated.Text style={[styles.comboEmoji, flameAnimatedStyle]}>
+                {'\uD83D\uDD25'}
+              </Animated.Text>
+              <Text style={styles.comboText}>7 Combo Streak!</Text>
+            </Animated.View>
 
-        <Animated.View style={[styles.rankCard, rankAnimatedStyle]}>
-          <Text style={styles.rankLabel}>Leaderboard Finish</Text>
-          <Text style={styles.rankValue}>#3 of 1,200</Text>
-        </Animated.View>
+            {/* Animated Rank Card */}
+            <Animated.View style={[styles.rankCard, rankAnimatedStyle]}>
+              <Text style={styles.rankLabel}>Leaderboard Finish</Text>
+              <Text style={styles.rankValue}>#3 of 1,200</Text>
+            </Animated.View>
 
-        <View style={styles.ctaSpacer} />
+            <View style={styles.ctaSpacer} />
 
-        <AnimatedPressable
-          onPress={handleSharePress}
-          style={[styles.shareButton, ctaAnimatedStyle]}
-        >
-          <Canvas pointerEvents="none" style={styles.shimmerCanvas}>
-            <Group
-              transform={[
-                { translateX: shimmerTranslateX as unknown as AnimatedScalar },
-                { rotate: 18 * (Math.PI / 180) },
-              ]}
+            {/* Animated Share Button with Shimmer */}
+            <AnimatedPressable
+              onPress={handleSharePress}
+              style={[styles.shareButton, ctaAnimatedStyle]}
             >
-              <Rect
-                x={0}
-                y={-BUTTON_HEIGHT}
-                width={SHIMMER_WIDTH}
-                height={BUTTON_HEIGHT * 3}
-              >
-                <LinearGradient
-                  start={vec(0, 0)}
-                  end={vec(SHIMMER_WIDTH, 0)}
-                  colors={[
-                    'rgba(255,255,255,0)',
-                    'rgba(255,255,255,0.12)',
-                    'rgba(255,255,255,0.42)',
-                    'rgba(255,255,255,0.12)',
-                    'rgba(255,255,255,0)',
+              <Canvas pointerEvents="none" style={styles.shimmerCanvas}>
+                <Group
+                  transform={[
+                    { translateX: shimmerTranslateX as unknown as AnimatedScalar },
+                    { rotate: 18 * (Math.PI / 180) },
                   ]}
-                  positions={[0, 0.22, 0.5, 0.78, 1]}
-                />
-              </Rect>
-            </Group>
-          </Canvas>
-          <Text style={styles.shareText}>Share Result</Text>
-        </AnimatedPressable>
+                >
+                  <Rect
+                    x={0}
+                    y={-BUTTON_HEIGHT}
+                    width={SHIMMER_WIDTH}
+                    height={BUTTON_HEIGHT * 3}
+                  >
+                    <LinearGradient
+                      start={vec(0, 0)}
+                      end={vec(SHIMMER_WIDTH, 0)}
+                      colors={[
+                        'rgba(255,255,255,0)',
+                        'rgba(255,255,255,0.12)',
+                        'rgba(255,255,255,0.42)',
+                        'rgba(255,255,255,0.12)',
+                        'rgba(255,255,255,0)',
+                      ]}
+                      positions={[0, 0.22, 0.5, 0.78, 1]}
+                    />
+                  </Rect>
+                </Group>
+              </Canvas>
+              <Text style={styles.shareText}>Share Result</Text>
+            </AnimatedPressable>
+          </View>
+
+          {/* Decorative Art */}
+          <View style={styles.artColumn}>
+            <View style={styles.artFrame}>
+              <Image
+                source={SCOREBOARD_ART}
+                style={styles.scoreboardArt}
+                resizeMode="contain"
+              />
+            </View>
+          </View>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -585,13 +687,49 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
     backgroundColor: '#070B14',
   },
+  heroRow: {
+    width: '100%',
+    maxWidth: 1120,
+    flexDirection: IS_WIDE_LAYOUT ? 'row' : 'column',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    alignSelf: 'center',
+  },
+  contentColumn: {
+    width: IS_WIDE_LAYOUT ? '56%' : '100%',
+    maxWidth: CONTENT_WIDTH,
+    alignItems: IS_WIDE_LAYOUT ? 'flex-start' : 'center',
+  },
+  artColumn: {
+    width: IS_WIDE_LAYOUT ? '44%' : '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: IS_WIDE_LAYOUT ? 0 : 18,
+    marginLeft: IS_WIDE_LAYOUT ? 18 : 0,
+  },
+  artFrame: {
+    width: IS_WIDE_LAYOUT ? 360 : Math.min(width * 0.72, 320),
+    height: IS_WIDE_LAYOUT ? 360 : Math.min(width * 0.72, 320),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scoreboardArt: {
+    width: '100%',
+    height: '100%',
+  },
   backgroundLayer: {
     ...StyleSheet.absoluteFillObject,
+  },
+  logoWrap: {
+    position: 'absolute',
+    top: 20,
+    left: 24,
+    zIndex: 3,
+    transform: [{ scale: 0.68 }],
   },
   backgroundCanvas: {
     flex: 1,
@@ -603,8 +741,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerBlock: {
-    alignItems: 'center',
-    marginBottom: 36,
+    alignItems: IS_WIDE_LAYOUT ? 'flex-start' : 'center',
+    marginBottom: 28,
   },
   kicker: {
     color: '#78A9FF',
@@ -615,12 +753,31 @@ const styles = StyleSheet.create({
   },
   title: {
     color: '#F3F7FF',
-    fontSize: 28,
-    fontWeight: '800',
-    letterSpacing: 0.2,
+    fontSize: IS_WIDE_LAYOUT ? 56 : 42,
+    fontWeight: '900',
+    lineHeight: IS_WIDE_LAYOUT ? 54 : 40,
+    letterSpacing: -2.2,
+    textTransform: 'uppercase',
+  },
+  titleAccent: {
+    color: '#B7FF5A',
+    fontSize: IS_WIDE_LAYOUT ? 56 : 42,
+    fontWeight: '900',
+    lineHeight: IS_WIDE_LAYOUT ? 54 : 40,
+    letterSpacing: -2.2,
+    textTransform: 'uppercase',
+  },
+  subtitle: {
+    color: '#B8C4DD',
+    fontSize: 14,
+    lineHeight: 22,
+    marginTop: 18,
+    maxWidth: 320,
+    letterSpacing: 0.1,
   },
   scoreShell: {
-    alignItems: 'center',
+    width: '100%',
+    alignItems: IS_WIDE_LAYOUT ? 'flex-start' : 'center',
     marginBottom: 28,
   },
   scoreLabel: {
@@ -631,11 +788,12 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   scoreValue: {
-    minWidth: 220,
+    width: '100%',
+    maxWidth: 320,
     color: '#FFFFFF',
     fontSize: 64,
     fontWeight: '900',
-    textAlign: 'center',
+    textAlign: IS_WIDE_LAYOUT ? 'left' : 'center',
     letterSpacing: 1.4,
     paddingVertical: 0,
     paddingHorizontal: 0,
@@ -651,6 +809,7 @@ const styles = StyleSheet.create({
   comboBadge: {
     flexDirection: 'row',
     alignItems: 'center',
+    alignSelf: IS_WIDE_LAYOUT ? 'flex-start' : 'center',
     borderWidth: 1,
     borderColor: 'rgba(255, 176, 90, 0.28)',
     backgroundColor: 'rgba(255, 122, 24, 0.12)',
@@ -672,6 +831,7 @@ const styles = StyleSheet.create({
   rankCard: {
     width: '100%',
     maxWidth: 320,
+    alignSelf: IS_WIDE_LAYOUT ? 'flex-start' : 'center',
     borderRadius: 22,
     paddingVertical: 18,
     paddingHorizontal: 20,
@@ -700,6 +860,7 @@ const styles = StyleSheet.create({
   shareButton: {
     width: BUTTON_WIDTH,
     height: BUTTON_HEIGHT,
+    alignSelf: IS_WIDE_LAYOUT ? 'flex-start' : 'center',
     borderRadius: BUTTON_RADIUS,
     overflow: 'hidden',
     alignItems: 'center',

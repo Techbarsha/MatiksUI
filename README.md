@@ -176,22 +176,9 @@ Basic verification completed:
 - TypeScript check via `npx tsc --noEmit`
 - Expo web dev server launched successfully during setup
 
-If you want stronger production confidence, recommended next steps are:
-
-- Add snapshot and rendering tests
-- Add device testing on Android hardware
-- Validate frame performance on lower-end devices
-- Add share action integration and analytics hooks
-
-## Future Improvements
-
-- Real share flow integration
-- Dynamic score / rank / combo props
-- Theme variants for different game modes
-- Sound effects or haptics integration
-- Result cards for win / loss / MVP states
-- Trophy or league progression reveals
-
 ## License
 
 This repository currently does not define a separate license file. Add one if you plan to distribute or open-source the project publicly.
+
+### Built with ❤️ by **Barsha Saha**  
+💻 Frontend Developer | Angular Enthusiast

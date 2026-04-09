@@ -9,7 +9,9 @@ import {
   View,
 } from 'react-native';
 import {
+  BlurMask,
   Canvas,
+  Circle,
   Group,
   LinearGradient,
   Rect,
@@ -48,6 +50,7 @@ const SHIMMER_START = -SHIMMER_WIDTH * 1.2;
 const SHIMMER_END = BUTTON_WIDTH + SHIMMER_WIDTH * 1.2;
 const CONFETTI_ORIGIN_X = width / 2;
 const CONFETTI_ORIGIN_Y = Math.max(120, height * 0.27);
+const AMBIENT_ROTATION = -18 * (Math.PI / 180);
 
 type ConfettiParticleConfig = {
   color: string;
@@ -162,6 +165,7 @@ const ScoreRevealScreen = () => {
   const shimmerTranslateX = useSharedValue(SHIMMER_START);
   const confettiProgress = useSharedValue(1);
   const confettiOpacity = useSharedValue(0);
+  const ambientPulse = useSharedValue(0);
 
   useEffect(() => {
     // Score overshoots slightly, then settles for a premium reveal.
@@ -288,7 +292,23 @@ const ScoreRevealScreen = () => {
       -1,
       false,
     );
+
+    ambientPulse.value = withRepeat(
+      withSequence(
+        withTiming(1, {
+          duration: 3200,
+          easing: Easing.inOut(Easing.quad),
+        }),
+        withTiming(0, {
+          duration: 3200,
+          easing: Easing.inOut(Easing.quad),
+        }),
+      ),
+      -1,
+      false,
+    );
   }, [
+    ambientPulse,
     comboOpacity,
     comboScale,
     confettiOpacity,
@@ -351,6 +371,19 @@ const ScoreRevealScreen = () => {
     transform: [{ scale: ctaScale.value }],
   }));
 
+  const glowOpacity = useDerivedValue(
+    () => 0.24 + ambientPulse.value * 0.18,
+    [ambientPulse],
+  );
+  const haloOpacity = useDerivedValue(
+    () => 0.12 + ambientPulse.value * 0.08,
+    [ambientPulse],
+  );
+  const bandOffset = useDerivedValue(
+    () => -40 + ambientPulse.value * 28,
+    [ambientPulse],
+  );
+
   const handleSharePress = () => {
     ctaScale.value = withSequence(
       withTiming(0.95, {
@@ -373,6 +406,93 @@ const ScoreRevealScreen = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
+        <View pointerEvents="none" style={styles.backgroundLayer}>
+          <Canvas style={styles.backgroundCanvas}>
+            <Rect x={0} y={0} width={width} height={height}>
+              <LinearGradient
+                start={vec(0, 0)}
+                end={vec(width, height)}
+                colors={['#04070F', '#08101E', '#0B1630', '#07111F']}
+                positions={[0, 0.34, 0.74, 1]}
+              />
+            </Rect>
+
+            <Circle
+              cx={width * 0.84}
+              cy={height * 0.18}
+              r={150}
+              color="rgba(58, 157, 255, 0.16)"
+              opacity={glowOpacity as unknown as AnimatedScalar}
+            >
+              <BlurMask blur={56} style="solid" />
+            </Circle>
+
+            <Circle
+              cx={width * 0.18}
+              cy={height * 0.78}
+              r={132}
+              color="rgba(0, 223, 186, 0.12)"
+              opacity={glowOpacity as unknown as AnimatedScalar}
+            >
+              <BlurMask blur={52} style="solid" />
+            </Circle>
+
+            <Circle
+              cx={width * 0.5}
+              cy={height * 0.42}
+              r={178}
+              color="rgba(255, 255, 255, 0.08)"
+              opacity={haloOpacity as unknown as AnimatedScalar}
+            >
+              <BlurMask blur={72} style="solid" />
+            </Circle>
+
+            <Group
+              transform={[
+                { translateX: bandOffset as unknown as AnimatedScalar },
+                { rotate: AMBIENT_ROTATION },
+              ]}
+            >
+              <Rect
+                x={-width * 0.15}
+                y={height * 0.16}
+                width={width * 1.35}
+                height={96}
+              >
+                <LinearGradient
+                  start={vec(0, 0)}
+                  end={vec(width * 1.35, 0)}
+                  colors={[
+                    'rgba(255,255,255,0)',
+                    'rgba(111,191,255,0.03)',
+                    'rgba(255,255,255,0.10)',
+                    'rgba(111,191,255,0.03)',
+                    'rgba(255,255,255,0)',
+                  ]}
+                  positions={[0, 0.18, 0.5, 0.82, 1]}
+                />
+              </Rect>
+            </Group>
+
+            <Group transform={[{ rotate: AMBIENT_ROTATION }]}>
+              <Rect
+                x={-width * 0.1}
+                y={height * 0.72}
+                width={width * 1.2}
+                height={1.5}
+                color="rgba(255,255,255,0.08)"
+              />
+              <Rect
+                x={width * 0.16}
+                y={height * 0.14}
+                width={width * 0.54}
+                height={1}
+                color="rgba(135,206,255,0.1)"
+              />
+            </Group>
+          </Canvas>
+        </View>
+
         <View pointerEvents="none" style={styles.confettiLayer}>
           <Canvas style={styles.confettiCanvas}>
             {CONFETTI_PARTICLES.map((particle, index) => (
@@ -469,6 +589,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 24,
     backgroundColor: '#070B14',
+  },
+  backgroundLayer: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  backgroundCanvas: {
+    flex: 1,
   },
   confettiLayer: {
     ...StyleSheet.absoluteFillObject,

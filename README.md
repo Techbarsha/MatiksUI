@@ -6,11 +6,6 @@ For this assignment, I designed and developed MatiksScoreUI, a polished Expo + R
 
 ## Overview
 ![TypeScript](https://img.shields.io/badge/TypeScript-Enabled-blue?style=for-the-badge&logo=typescript)
-
-For this assignment, I designed and developed MatiksScoreUI, a polished Expo + React Native UI prototype for the Matiks multiplayer math duel app. This project focuses on a premium post-game score reveal experience with smooth motion, layered visuals, and performance-friendly animation patterns designed for Android first, while remaining iOS compatible.
-
-## Overview
-![TypeScript](https://img.shields.io/badge/TypeScript-Enabled-blue?style=for-the-badge&logo=typescript)
 ![React](https://img.shields.io/badge/React-Enabled-blue?style=for-the-badge&logo=react)
 ![Expo](https://img.shields.io/badge/Expo-Enabled-blue?style=for-the-badge&logo=expo)
 

@@ -49,12 +49,15 @@ The goal of this repo is to showcase a modern, game-like React Native motion UI 
 ## Project Structure
 
 ```text
-MatiksUI/
+MatiksScoreUI/
+├─ assets/
+│  └─ scoreboard.png
 ├─ App.tsx
 ├─ ScoreRevealScreen.tsx
 ├─ app.json
 ├─ babel.config.js
 ├─ package.json
+├─ package-lock.json
 ├─ tsconfig.json
 └─ README.md
 ```

@@ -1,0 +1,607 @@
+import React, { useEffect } from 'react';
+import {
+  Dimensions,
+  Pressable,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import {
+  Canvas,
+  Group,
+  LinearGradient,
+  Rect,
+  RoundedRect,
+  vec,
+} from '@shopify/react-native-skia';
+import Animated, {
+  Easing,
+  Extrapolation,
+  interpolate,
+  useAnimatedProps,
+  useAnimatedStyle,
+  useDerivedValue,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withSpring,
+  withTiming,
+  type SharedValue,
+} from 'react-native-reanimated';
+
+const { width, height } = Dimensions.get('window');
+
+const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+const FINAL_SCORE = 2840;
+const SCORE_TIMING_DURATION = 1650;
+const CONFETTI_DURATION = 1200;
+const RANK_DELAY = 200;
+const BUTTON_WIDTH = Math.min(width - 48, 320);
+const BUTTON_HEIGHT = 58;
+const BUTTON_RADIUS = 18;
+const SHIMMER_WIDTH = BUTTON_WIDTH * 0.42;
+const SHIMMER_START = -SHIMMER_WIDTH * 1.2;
+const SHIMMER_END = BUTTON_WIDTH + SHIMMER_WIDTH * 1.2;
+const CONFETTI_ORIGIN_X = width / 2;
+const CONFETTI_ORIGIN_Y = Math.max(120, height * 0.27);
+
+type ConfettiParticleConfig = {
+  color: string;
+  gravity: number;
+  height: number;
+  rotationStart: number;
+  rotationVelocity: number;
+  size: number;
+  vx: number;
+  vy: number;
+};
+
+type ConfettiParticleProps = {
+  config: ConfettiParticleConfig;
+  opacityProgress: SharedValue<number>;
+  progress: SharedValue<number>;
+};
+
+type AnimatedScalar = number;
+
+const CONFETTI_COLORS = [
+  '#FF5F6D',
+  '#FFC400',
+  '#4ECDC4',
+  '#5F8EFF',
+  '#BA68FF',
+  '#FFFFFF',
+];
+
+const seeded = (index: number, offset: number) => {
+  const value = Math.sin(index * 97.13 + offset * 31.7) * 43758.5453;
+  return value - Math.floor(value);
+};
+
+const CONFETTI_PARTICLES: ConfettiParticleConfig[] = Array.from(
+  { length: 28 },
+  (_, index) => {
+    const angle = (-155 + seeded(index, 1) * 130) * (Math.PI / 180);
+    const speed = 180 + seeded(index, 2) * 210;
+
+    return {
+      color: CONFETTI_COLORS[index % CONFETTI_COLORS.length],
+      gravity: 220 + seeded(index, 5) * 140,
+      height: 4 + seeded(index, 4) * 6,
+      rotationStart: seeded(index, 6) * Math.PI,
+      rotationVelocity: (seeded(index, 7) * 8 - 4) * Math.PI,
+      size: 8 + seeded(index, 3) * 12,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+    };
+  },
+);
+
+const ConfettiParticle = ({
+  config,
+  opacityProgress,
+  progress,
+}: ConfettiParticleProps) => {
+  const translateX = useDerivedValue(
+    () => CONFETTI_ORIGIN_X + config.vx * progress.value,
+    [config.vx, progress],
+  );
+  const translateY = useDerivedValue(
+    () =>
+      CONFETTI_ORIGIN_Y +
+      config.vy * progress.value +
+      config.gravity * progress.value * progress.value,
+    [config.gravity, config.vy, progress],
+  );
+  const rotation = useDerivedValue(
+    () => config.rotationStart + config.rotationVelocity * progress.value,
+    [config.rotationStart, config.rotationVelocity, progress],
+  );
+  const scale = useDerivedValue(() => 1 - progress.value * 0.18, [progress]);
+  const opacity = useDerivedValue(
+    () => Math.max(0, (1 - progress.value) * opacityProgress.value),
+    [opacityProgress, progress],
+  );
+
+  return (
+    <Group
+      origin={{ x: 0, y: 0 }}
+      opacity={opacity as unknown as AnimatedScalar}
+      transform={[
+        { translateX: translateX as unknown as AnimatedScalar },
+        { translateY: translateY as unknown as AnimatedScalar },
+        { rotate: rotation as unknown as AnimatedScalar },
+        { scale: scale as unknown as AnimatedScalar },
+      ]}
+    >
+      <RoundedRect
+        x={-config.size / 2}
+        y={-config.height / 2}
+        width={config.size}
+        height={config.height}
+        r={config.height / 2}
+        color={config.color}
+      />
+    </Group>
+  );
+};
+
+const ScoreRevealScreen = () => {
+  const scoreValue = useSharedValue(0);
+  const comboScale = useSharedValue(0);
+  const comboOpacity = useSharedValue(0);
+  const flamePulse = useSharedValue(1);
+  const flameOpacity = useSharedValue(1);
+  const rankTranslateY = useSharedValue(50);
+  const rankOpacity = useSharedValue(0);
+  const ctaScale = useSharedValue(1);
+  const shimmerTranslateX = useSharedValue(SHIMMER_START);
+  const confettiProgress = useSharedValue(1);
+  const confettiOpacity = useSharedValue(0);
+
+  useEffect(() => {
+    // Score overshoots slightly, then settles for a premium reveal.
+    scoreValue.value = withSequence(
+      withTiming(FINAL_SCORE * 1.035, {
+        duration: SCORE_TIMING_DURATION,
+        easing: Easing.out(Easing.cubic),
+      }),
+      withSpring(
+        FINAL_SCORE,
+        {
+          damping: 12,
+          stiffness: 140,
+          mass: 0.8,
+          overshootClamping: false,
+        },
+        (finished) => {
+          'worklet';
+
+          if (!finished) {
+            return;
+          }
+
+          confettiProgress.value = 0;
+          confettiOpacity.value = 1;
+          confettiProgress.value = withTiming(1, {
+            duration: CONFETTI_DURATION,
+            easing: Easing.out(Easing.cubic),
+          });
+          confettiOpacity.value = withSequence(
+            withTiming(1, {
+              duration: 120,
+              easing: Easing.linear,
+            }),
+            withTiming(0, {
+              duration: CONFETTI_DURATION,
+              easing: Easing.out(Easing.quad),
+            }),
+          );
+
+          comboScale.value = withSequence(
+            withTiming(1.15, {
+              duration: 260,
+              easing: Easing.out(Easing.back(1.4)),
+            }),
+            withSpring(1, {
+              damping: 10,
+              stiffness: 170,
+              mass: 0.7,
+            }),
+          );
+
+          comboOpacity.value = withTiming(1, {
+            duration: 220,
+            easing: Easing.out(Easing.quad),
+          });
+
+          flamePulse.value = withRepeat(
+            withSequence(
+              withTiming(1.2, {
+                duration: 700,
+                easing: Easing.inOut(Easing.quad),
+              }),
+              withTiming(1, {
+                duration: 700,
+                easing: Easing.inOut(Easing.quad),
+              }),
+            ),
+            -1,
+            false,
+          );
+
+          flameOpacity.value = withRepeat(
+            withSequence(
+              withTiming(0.6, {
+                duration: 700,
+                easing: Easing.inOut(Easing.quad),
+              }),
+              withTiming(1, {
+                duration: 700,
+                easing: Easing.inOut(Easing.quad),
+              }),
+            ),
+            -1,
+            false,
+          );
+
+          rankTranslateY.value = withSequence(
+            withTiming(50, {
+              duration: RANK_DELAY,
+              easing: Easing.linear,
+            }),
+            withTiming(0, {
+              duration: 480,
+              easing: Easing.out(Easing.cubic),
+            }),
+          );
+
+          rankOpacity.value = withSequence(
+            withTiming(0, {
+              duration: RANK_DELAY,
+              easing: Easing.linear,
+            }),
+            withTiming(1, {
+              duration: 360,
+              easing: Easing.out(Easing.quad),
+            }),
+          );
+        },
+      ),
+    );
+
+    shimmerTranslateX.value = withRepeat(
+      withSequence(
+        withTiming(SHIMMER_END, {
+          duration: 1900,
+          easing: Easing.inOut(Easing.quad),
+        }),
+        withTiming(SHIMMER_START, {
+          duration: 0,
+          easing: Easing.linear,
+        }),
+      ),
+      -1,
+      false,
+    );
+  }, [
+    comboOpacity,
+    comboScale,
+    confettiOpacity,
+    confettiProgress,
+    flameOpacity,
+    flamePulse,
+    rankOpacity,
+    rankTranslateY,
+    scoreValue,
+    shimmerTranslateX,
+  ]);
+
+  const animatedScoreText = useDerivedValue(() => {
+    const clamped = interpolate(
+      scoreValue.value,
+      [0, FINAL_SCORE * 1.035],
+      [0, FINAL_SCORE * 1.035],
+      Extrapolation.CLAMP,
+    );
+
+    return `${Math.round(clamped)}`;
+  });
+
+  const scoreAnimatedProps = useAnimatedProps(
+    () =>
+      ({
+        text: animatedScoreText.value,
+      }) as never,
+  );
+
+  const scoreGlowStyle = useAnimatedStyle(() => {
+    const scale = interpolate(
+      scoreValue.value,
+      [0, FINAL_SCORE],
+      [0.94, 1.03],
+      Extrapolation.CLAMP,
+    );
+
+    return {
+      transform: [{ scale }],
+    };
+  });
+
+  const comboAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: comboOpacity.value,
+    transform: [{ scale: comboScale.value }],
+  }));
+
+  const flameAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: flameOpacity.value,
+    transform: [{ scale: flamePulse.value }],
+  }));
+
+  const rankAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: rankOpacity.value,
+    transform: [{ translateY: rankTranslateY.value }],
+  }));
+
+  const ctaAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: ctaScale.value }],
+  }));
+
+  const handleSharePress = () => {
+    ctaScale.value = withSequence(
+      withTiming(0.95, {
+        duration: 90,
+        easing: Easing.out(Easing.quad),
+      }),
+      withSpring(1.05, {
+        damping: 8,
+        stiffness: 220,
+        mass: 0.45,
+      }),
+      withSpring(1, {
+        damping: 10,
+        stiffness: 180,
+        mass: 0.6,
+      }),
+    );
+  };
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <View pointerEvents="none" style={styles.confettiLayer}>
+          <Canvas style={styles.confettiCanvas}>
+            {CONFETTI_PARTICLES.map((particle, index) => (
+              <ConfettiParticle
+                key={`confetti-${index}`}
+                config={particle}
+                opacityProgress={confettiOpacity}
+                progress={confettiProgress}
+              />
+            ))}
+          </Canvas>
+        </View>
+
+        <View style={styles.headerBlock}>
+          <Text style={styles.kicker}>MATCH COMPLETE</Text>
+          <Text style={styles.title}>Post Game Score</Text>
+        </View>
+
+        <Animated.View style={[styles.scoreShell, scoreGlowStyle]}>
+          <Text style={styles.scoreLabel}>Your Score</Text>
+          <AnimatedTextInput
+            editable={false}
+            underlineColorAndroid="transparent"
+            caretHidden
+            value={undefined}
+            defaultValue="0"
+            animatedProps={scoreAnimatedProps}
+            style={styles.scoreValue}
+          />
+          <View style={styles.scoreUnderline} />
+        </Animated.View>
+
+        <Animated.View style={[styles.comboBadge, comboAnimatedStyle]}>
+          <Animated.Text style={[styles.comboEmoji, flameAnimatedStyle]}>
+            {'\uD83D\uDD25'}
+          </Animated.Text>
+          <Text style={styles.comboText}>7 Combo Streak!</Text>
+        </Animated.View>
+
+        <Animated.View style={[styles.rankCard, rankAnimatedStyle]}>
+          <Text style={styles.rankLabel}>Leaderboard Finish</Text>
+          <Text style={styles.rankValue}>#3 of 1,200</Text>
+        </Animated.View>
+
+        <View style={styles.ctaSpacer} />
+
+        <AnimatedPressable
+          onPress={handleSharePress}
+          style={[styles.shareButton, ctaAnimatedStyle]}
+        >
+          <Canvas pointerEvents="none" style={styles.shimmerCanvas}>
+            <Group
+              transform={[
+                { translateX: shimmerTranslateX as unknown as AnimatedScalar },
+                { rotate: 18 * (Math.PI / 180) },
+              ]}
+            >
+              <Rect
+                x={0}
+                y={-BUTTON_HEIGHT}
+                width={SHIMMER_WIDTH}
+                height={BUTTON_HEIGHT * 3}
+              >
+                <LinearGradient
+                  start={vec(0, 0)}
+                  end={vec(SHIMMER_WIDTH, 0)}
+                  colors={[
+                    'rgba(255,255,255,0)',
+                    'rgba(255,255,255,0.12)',
+                    'rgba(255,255,255,0.42)',
+                    'rgba(255,255,255,0.12)',
+                    'rgba(255,255,255,0)',
+                  ]}
+                  positions={[0, 0.22, 0.5, 0.78, 1]}
+                />
+              </Rect>
+            </Group>
+          </Canvas>
+          <Text style={styles.shareText}>Share Result</Text>
+        </AnimatedPressable>
+      </View>
+    </SafeAreaView>
+  );
+};
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#070B14',
+  },
+  container: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    backgroundColor: '#070B14',
+  },
+  confettiLayer: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  confettiCanvas: {
+    flex: 1,
+  },
+  headerBlock: {
+    alignItems: 'center',
+    marginBottom: 36,
+  },
+  kicker: {
+    color: '#78A9FF',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 2.4,
+    marginBottom: 10,
+  },
+  title: {
+    color: '#F3F7FF',
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+  scoreShell: {
+    alignItems: 'center',
+    marginBottom: 28,
+  },
+  scoreLabel: {
+    color: '#8EA0C3',
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: 0.6,
+    marginBottom: 10,
+  },
+  scoreValue: {
+    minWidth: 220,
+    color: '#FFFFFF',
+    fontSize: 64,
+    fontWeight: '900',
+    textAlign: 'center',
+    letterSpacing: 1.4,
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+    backgroundColor: 'transparent',
+  },
+  scoreUnderline: {
+    width: 144,
+    height: 6,
+    borderRadius: 999,
+    marginTop: 16,
+    backgroundColor: 'rgba(72, 120, 255, 0.28)',
+  },
+  comboBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 176, 90, 0.28)',
+    backgroundColor: 'rgba(255, 122, 24, 0.12)',
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 999,
+    marginBottom: 22,
+  },
+  comboEmoji: {
+    fontSize: 24,
+    marginRight: 10,
+  },
+  comboText: {
+    color: '#FFD39C',
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+  rankCard: {
+    width: '100%',
+    maxWidth: 320,
+    borderRadius: 22,
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    backgroundColor: 'rgba(17, 24, 39, 0.96)',
+    borderWidth: 1,
+    borderColor: 'rgba(120, 169, 255, 0.18)',
+    marginBottom: 18,
+  },
+  rankLabel: {
+    color: '#8EA0C3',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    marginBottom: 8,
+  },
+  rankValue: {
+    color: '#F4F7FF',
+    fontSize: 30,
+    fontWeight: '900',
+    letterSpacing: 0.4,
+  },
+  ctaSpacer: {
+    height: 28,
+  },
+  shareButton: {
+    width: BUTTON_WIDTH,
+    height: BUTTON_HEIGHT,
+    borderRadius: BUTTON_RADIUS,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#4B7BFF',
+    shadowColor: '#4B7BFF',
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    elevation: 8,
+  },
+  shareText: {
+    color: '#F8FBFF',
+    fontSize: 17,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+    zIndex: 1,
+  },
+  shimmerCanvas: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: BUTTON_WIDTH,
+    height: BUTTON_HEIGHT,
+  },
+});
+
+export default ScoreRevealScreen;

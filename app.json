@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "Matiks",
+    "slug": "matiks",
+    "scheme": "matiks",
+    "platforms": ["android", "ios", "web"],
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "assetBundlePatterns": ["**/*"],
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}

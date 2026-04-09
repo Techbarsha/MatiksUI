@@ -118,6 +118,8 @@ const CONFETTI_PARTICLES: ConfettiParticleConfig[] = Array.from(
 const SCOREBOARD_ART = require('./assets/scoreboard.png');
 const IS_WIDE_LAYOUT = width >= 760;
 const CONTENT_WIDTH = Math.min(width - 48, 420);
+const ART_SIZE_WIDE = 500;
+const ART_SIZE_NARROW = Math.min(width * 0.8, 340);
 
 /**
  * A single confetti particle component.
@@ -712,8 +714,8 @@ const styles = StyleSheet.create({
     marginLeft: IS_WIDE_LAYOUT ? 18 : 0,
   },
   artFrame: {
-    width: IS_WIDE_LAYOUT ? 360 : Math.min(width * 0.72, 320),
-    height: IS_WIDE_LAYOUT ? 360 : Math.min(width * 0.72, 320),
+    width: IS_WIDE_LAYOUT ? ART_SIZE_WIDE : ART_SIZE_NARROW,
+    height: IS_WIDE_LAYOUT ? ART_SIZE_WIDE : ART_SIZE_NARROW,
     alignItems: 'center',
     justifyContent: 'center',
   },

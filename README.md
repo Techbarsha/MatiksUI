@@ -118,5 +118,16 @@ Basic verification completed:
 - TypeScript check via `npx tsc --noEmit`
 - Expo web dev server launched successfully during setup
 
+❤️ Final Note
+
+This project reflects my approach to:
+
+- Building polished UI experiences
+- Writing clean, scalable animation logic
+- Delivering production-quality frontend work
+
+I focused on combining performance + visual delight, aligning with what a modern game-like app such as Matiks would require.
+
+🙌 Thank you for reviewing my submission!
 Built with ❤️ by Barsha Saha 💻 Tech Enthusiast
 ```

@@ -1,5 +1,7 @@
 # MatiksScoreUI
 ![TypeScript](https://img.shields.io/badge/TypeScript-Enabled-blue?style=for-the-badge&logo=typescript)
+![React](https://img.shields.io/badge/React-Enabled-blue?style=for-the-badge&logo=react)
+![Expo](https://img.shields.io/badge/Expo-Enabled-blue?style=for-the-badge&logo=expo)
 
 MatiksUI is a polished Expo + React Native UI prototype for the Matiks multiplayer math duel app. This project currently focuses on a premium post-game score reveal experience with smooth motion, layered visuals, and performance-friendly animation patterns designed for Android first, while remaining iOS compatible.
 

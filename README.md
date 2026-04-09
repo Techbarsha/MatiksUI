@@ -7,9 +7,12 @@ For this assignment, I designed and developed MatiksScoreUI, a polished Expo + R
 ## Overview
 ![TypeScript](https://img.shields.io/badge/TypeScript-Enabled-blue?style=for-the-badge&logo=typescript)
 
-MatiksUI is a polished Expo + React Native UI prototype for the Matiks multiplayer math duel app. This project currently focuses on a premium post-game score reveal experience with smooth motion, layered visuals, and performance-friendly animation patterns designed for Android first, while remaining iOS compatible.
+For this assignment, I designed and developed MatiksScoreUI, a polished Expo + React Native UI prototype for the Matiks multiplayer math duel app. This project focuses on a premium post-game score reveal experience with smooth motion, layered visuals, and performance-friendly animation patterns designed for Android first, while remaining iOS compatible.
 
 ## Overview
+![TypeScript](https://img.shields.io/badge/TypeScript-Enabled-blue?style=for-the-badge&logo=typescript)
+![React](https://img.shields.io/badge/React-Enabled-blue?style=for-the-badge&logo=react)
+![Expo](https://img.shields.io/badge/Expo-Enabled-blue?style=for-the-badge&logo=expo)
 
 This screen is built as a production-style animated result experience for a competitive math duel flow. It emphasizes a premium reveal sequence:
 
@@ -18,7 +21,13 @@ This screen is built as a production-style animated result experience for a comp
 - The rank reveal slides up and fades in after the score settles.
 - The share CTA stays visible with a looping shimmer and responsive press feedback.
 - A Skia confetti burst triggers when the score animation completes.
+- The final score counts up from zero with a slight overshoot.
+- The combo streak badge pops in with a bounce.
+- The rank reveal slides up and fades in after the score settles.
+- The share CTA stays visible with a looping shimmer and responsive press feedback.
+- A Skia confetti burst triggers when the score animation completes.
 
+The goal of this assignment is to showcase my ability to create a modern, game-like React Native motion UI using Reanimated 3 and Skia without relying on Lottie or heavyweight animation packages.
 The goal of this assignment is to showcase my ability to create a modern, game-like React Native motion UI using Reanimated 3 and Skia without relying on Lottie or heavyweight animation packages.
 
 ## Tech Stack
@@ -40,7 +49,20 @@ The goal of this assignment is to showcase my ability to create a modern, game-l
 - **Custom Modern Background:** Uses layered gradients, glow fields, and geometric light bands.
 
 ## Performance Notes
+- **Post Game Score Reveal Screen**
+- **Animated Score Counter:** Ticks from 0 to 2840 using animated values with an overshoot and settle behavior for a premium feel. Integer ticking effect driven by animated values.
+- **Combo Streak Badge:** Displays 🔥 7 Combo Streak! with a flame icon pulse loop using scale and opacity.
+- **Rank Reveal:** Displays #3 of 1,200 with a delayed entrance after score completion.
+- **Share CTA:** Features a looping gradient shimmer/glint and press feedback (scales down, bounces up, and settles).
+- **Skia Confetti Burst:** Randomized particle directions, rotation, and fade-out triggered upon score completion.
+- **Custom Modern Background:** Uses layered gradients, glow fields, and geometric light bands.
 
+## Performance Notes
+
+- Animations are driven with Reanimated shared values.
+- No React state is used inside animation callbacks.
+- Motion is sequenced on the UI thread.
+- Lightweight visual layering keeps the screen smooth on Android devices.
 - Animations are driven with Reanimated shared values.
 - No React state is used inside animation callbacks.
 - Motion is sequenced on the UI thread.
@@ -59,6 +81,7 @@ The goal of this assignment is to showcase my ability to create a modern, game-l
 npm install --legacy-peer-deps
 ```
 
+Note: `--legacy-peer-deps` is currently used because the installed Skia version works with this setup but npm peer resolution is stricter than the runtime requirements in this repo.
 Note: `--legacy-peer-deps` is currently used because the installed Skia version works with this setup but npm peer resolution is stricter than the runtime requirements in this repo.
 
 ### Run the Project
